@@ -1,0 +1,232 @@
+# IDA-3D: Instance-Depth-Aware 3D Object Detection From Stereo Vision for Autonomous Driving
+
+Bibtex: @InProceedings{Peng_2020_CVPR,
+author = {Peng, Wanli and Pan, Hao and Liu, He and Sun, Yi},
+title = {IDA-3D: Instance-Depth-Aware 3D Object Detection From Stereo Vision for Autonomous Driving},
+booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+month = {June},
+year = {2020}
+}
+Files: https://openaccess.thecvf.com/content_CVPR_2020/html/Peng_IDA-3D_Instance-Depth-Aware_3D_Object_Detection_From_Stereo_Vision_for_Autonomous_CVPR_2020_paper.html, IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Peng_IDA-3D_Instance-Depth-Aware_3D_CVPR_2020_supplemental.pdf, IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Peng_IDA-3D_Instance-Depth-Aware_3D_Object_Detection_From_Stereo_Vision_for_Autonomous_CVPR_2020_paper.pdf, https://www.youtube.com/watch?v=nXzpB7JzArs&ab_channel=ComputerVisionFoundationVideos
+Github: https://github.com/swords123/IDA-3D
+Last Modified: Oct 7, 2020 5:50 PM
+Status: Ongoing
+Tags: 3D Object Detection, autonomous vehicle
+Type: CVPR
+Year: 2020
+
+**Wanli Peng, Hao Pan, He Liu, Yi Sun**; Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2020, pp. 13015-13024 
+
+# **Abstract**
+
+3D object detection is an important scene understanding task in autonomous driving and virtual reality. Approaches based on LiDAR technology have high performance, but LiDAR is expensive. Considering more general scenes, where there is no LiDAR data in the 3D datasets, we propose a 3D object detection approach from stereo vision which does not rely on LiDAR data either as input or as supervision in training, but solely takes RGB images with corresponding annotated 3D bounding boxes as training data. As depth estimation of object is the key factor affecting the performance of 3D object detection, we introduce an Instance-DepthAware (IDA) module which accurately predicts the depth of the 3D bounding box's center by instance-depth awareness, disparity adaptation and matching cost reweighting. Moreover, our model is an end-to-end learning framework which does not require multiple stages or postprocessing algorithm. We provide detailed experiments on KITTI benchmark and achieve impressive improvements compared with the existing image-based methods. Our code is available at https://github.com/swords123/IDA-3D. 
+
+**Related Material**  [[pdf](https://openaccess.thecvf.com/content_CVPR_2020/papers/Peng_IDA-3D_Instance-Depth-Aware_3D_Object_Detection_From_Stereo_Vision_for_Autonomous_CVPR_2020_paper.pdf)] [[supp](https://openaccess.thecvf.com/content_CVPR_2020/supplemental/Peng_IDA-3D_Instance-Depth-Aware_3D_CVPR_2020_supplemental.pdf)] [[video](https://www.youtube.com/watch?v=nXzpB7JzArs)]
+
+# 3D Object Detection
+
+### Applications
+
+Scene understanding for Autonomous driving
+
+Virtual Reality and Augmented Reality
+
+### Three Method categories:
+
+- Cloud-based methods [6, 5, 11, 21, 30, 24, 16, 15, 28, 13]
+    - LiDAR — one of the best performances, but expensive
+    - some datasets do not provide LiDAR data, such as PASCAL 3D+ [26]
+- Monocular image-based methods [3, 20, 19, 27, 12, 22, 1, 25, 18]
+    - cheapest, most convenient to install
+    - lacks reliable depth information
+- Binocular image-based methods [4, 14, 23, 25] (Stereo-based)
+    - not expensive
+    - can provide denser information for smaller objects in distance (compared to LiDAR)
+    - inherently provide absolute depth information
+
+### Stereo-based 3D Object Detection
+
+- depth error: increase quadratically with distance (r^2)
+- 3D object detection without depth maps
+    - difficult task if solely relying on annotated 3D bounding boxes
+    - lags behind in localizing objects
+
+Proposed Solution
+
+3D Object detection approach from stereo-vision with corresponding annotated 3D bounding boxes as training data
+
+1. extract objects (from bg) by stereo region proposal network (RPN) to remove interference on 3D Object
+
+Overview of the Object Instance Detection
+
+Extract a pair of Regions of Interest (RoI) for each object in the left and right images via RPN Module [14]
+
+- purpose for this method:
+    - is to avoid complex matching
+    - eliminate the adverse effect of background on object detection
+- creates an union RoI for each object whose size and location are the same
+- output: pairs of RoIs for each object
+
+Feature maps from left and right images are aligned [RoIAlign, 8] and concateneted
+
+Concatenated maps are fed into Stereo Regression Network
+
+- predicts position, orientation, and dimensions of 3D bounding box
+    - Position: represented by x,y,z
+        - since 3d depth has a large dynamic range and its deviation accounts for the majority of the difference in 3D object detection
+        - separated task to obtain the depth of a 3D bounding box center (**Instance depth)**
+    - Orientation: angle from camera view (POV)
+    - Dimensions: 2D dimensions of bounding box
+
+### Instance Disparity (Depth) Estimation
+
+**disparity of each object** instance to locate its **position**
+
+- measure correspondence of the same instance between two images, paying more attention to the global spatial information of the object
+- cost volume of dimensionality: disparity x height x width x feature size — by concatenating left and right feature maps across each disparity level
+
+a cost volume of dimensionality disparity × height × width × feature size
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled.png)
+
+conv0-maxpool0-conv1-maxpool1
+
+- learn and perform down sampling on feature representations from the cost volume
+- since disparity is inversely proportional to depth and both represent the position of an object, we transform the disparity into depth representation after formulating cost volume
+
+conv2-avgpool
+
+- down sampled features by 3D CNN are finally merged into depth probability of the 3D box center
+
+By performing the sum of each depth, the 3D box depth is obtained:
+
+$$\hat{z} = \sum_{i=0}^{N} z_i \times P(i) \\
+N = \text{number of depth levels} \\
+P_i = \text{normalized probability}
+$$
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%201.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%201.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%202.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%202.png)
+
+Feature map legend: bright yellow (stronger activation) - dark blue (lower activation)
+
+Note from figure: feature maps are gradually changed from low-level features to high-level global features of its center depth probability
+
+### Instance Disparity (Depth) Adaptation
+
+Previous works: optimize the accuracy of disparity estimation
+
+Error in depth increases quadratically with distance — influence of error of further objects is larger, leading to poor 3D object detection
+
+**Disparity level in cost volume: uniform to non-uniform**
+
+Non-uniform Disparity Quantization 
+
+$f_u: \text{horizontal focal length, } b: \text{baseline of binocular camera}$
+
+$$D = \frac{f_u \times b}{z}$$
+
+- calculate range according to the width of the union box of the image $[z_{min}, z_{max}]$, minimum and maximum depth values of each object respectively
+    - use intrinsic camera parameters
+    - minimizes the average partition cell quantization for a fixed number of disparity levels
+    - improved depth estimation
+
+### Matching Cost Reweighting
+
+Depth equation [[1]]() is a weighted average of all depth levels — not most likely, which may lead to on-discriminative depth estimation: **reweight the matching cost**
+
+- Penalize the depth levels not unique for an object instance
+- promote the depth levels that have high probabilities
+
+**Two Parts:**
+
+1. 4D Cost volume — 4D volume packing a difference feature map between left and right feature maps across each disparity level
+2. 3D CNN + Maxpooling — 
+    1. subsequent 3D CNN take into account the difference between left and right feature maps in a certain depth level and refine depth estimation
+    2. while disparity attention mechanism sets the weight $r_i$  for each channel
+
+        $$r_i = cos <F_i^l, F_i^r > \quad = \frac{F_i^l \cdot F_i^r }{F_i^l \cdot F_i^r}$$
+
+        ![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%203.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%203.png)
+
+### 3D Object Detection
+
+Estimation of the following:
+
+- IDA-3D Module: Depth estimation
+- **Position estimation:** horizontal and vertical coordinates (x,y) of the object center
+    - calculated according to its projections (u,v) on the image pairs (stereo camera calibration)
+
+    $$x = \frac{(u - c_u) \times z}{f_u} \qquad y = \frac{(v - c_u) \times z}{f_v}$$
+
+    $\\
+    (c_u, c_v) : \text{camera center} \\
+    f_u, f_v : \text{horizontal and vertical focal length}$
+
+- **Dimension Regression:** object stereo bounding boxes
+    - produce dimension offsets $(\Delta h, \Delta w, \Delta l)$ to the mean class $(\bar{h}, \bar{w}, \bar{l})$
+
+    $$h = \bar{h}e^{\Delta h} \qquad w = \bar{w}e^{\Delta w} \qquad l = \bar{l}e^{\Delta l}$$
+
+- **Orientation Regression** : viewpoint angle
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%204.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%204.png)
+
+$$\theta \quad = \quad \alpha \quad + \quad tan^{-1} \frac{x}{z} $$
+
+$\theta : \text{orientation angle} \\
+x, z : \text{horizontal position, depth}$
+
+six-parallel fully-connected network with the concatenated left and right RoI features as input
+
+## Implementation
+
+### Loss function
+
+Whole multi-task loss is formulated as:
+
+$$L = w_1 L_{rpn} + w_2 L_{2Dbox} + w_3 L_{3D}^{(u,v)} + w_4 L_{3D}^z + w_5 L_{dim} + w_6 L_{\alpha}$$
+
+$L_{rpn}, L_{2Dbox} : \text{loss of 2D boxes on stereo RPN module, stereo regression module} \\
+L_{3D}^{(u,v)} : \text{loss of projection of object instance centers} \\
+L_{3D}^z : \text{loss of instance depth of objects}  \\
+L_{dim} : \text{offset regression loss for the 3D box dimension}  \\
+L_{\alpha} : \text{orientation loss - classification loss for discrete angle bins and angle bin offsets}$ 
+
+### Parameters and Hyper-parameters
+
+- Feature extractor: ResNet50 + FPN
+- Training data: flip images in training set, exchange the left and right image, mirror 2D boxes annotation, viewpoint angle and 2D projection of centroid — data augmentation
+- IDA Module: divide depth between $z_{max} ,  z_{min}$ into 24 levels
+- During inference: use 2D boxes obtained from 2D regression as input to IDA module
+- Optimizer: SGD with initial learning rate 0.02, momentum 0.9, weight decay 0.0005
+- Batch size: 4, 80 000 iterations, 26 Hrs
+
+Computer: two (2) NVIDIA 2080Ti GPUs
+
+KITTI 3D object detection dataset: 7481 training images, 7581 testing images — 3712 and 3769 images respectively
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%205.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%205.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%203.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%203.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%204.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%204.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%206.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%206.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%207.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%207.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%208.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%208.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%209.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%209.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%2010.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%2010.png)
+
+![IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%2011.png](IDA-3D%20Instance-Depth-Aware%203D%20Object%20Detection%20Fr%20627fc982004640979d35d6defa5f4ba6/Untitled%2011.png)
+
+# CVPR Video Presentation
+
+[https://www.youtube.com/watch?v=nXzpB7JzArs&ab_channel=ComputerVisionFoundationVideos](https://www.youtube.com/watch?v=nXzpB7JzArs&ab_channel=ComputerVisionFoundationVideos)
